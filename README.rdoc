@@ -1,0 +1,53 @@
+= Bitcoin-ruby-wallet
+
+This is a simple wallet based on bitcoin-ruby[http://github.com/lian/bitcoin-ruby], bitcoin-ruby-blockchain[http://github.com/mhanne/bitcoin-ruby-blockchain], and bitcoin-ruby-node[http://github.com/mhanne/bitcoin-ruby-node].
+
+It is in very early development and serves mostly as a proof-of-concept prototype.
+
+
+== Installation
+
+We assume you already have a ruby 1.9 or 2.0 compatible interpreter and rubygems environment.
+
+ git clone https://github.com/mhanne/bitcoin-ruby-wallet.git; cd bitcoin-ruby-wallet
+ ruby bin/bitcoin_wallet
+
+TODO: gem install
+
+== Usage
+
+If you are running the node with default options, the wallet should just work:
+
+ ruby bin/bitcoin_wallet
+
+You can specify the network to run on (must match the running node and blockchain),
+the keystore to use, and how to connect to the node and its database.
+See +--help+ for details.
+
+TODO: explain keystores
+
+== Documentation
+
+Always trying to improve, any help appreciated! If anything is unclear to you, let us know!
+
+Documentation is generated using yardoc:
+
+ rake doc
+
+The specs are also a good place to see how something works.
+
+
+== Specs
+
+The specs can be run with
+
+ rake
+
+or, if you want to run a single spec
+
+ rspec spec/wallet/wallet_spec.rb
+
+
+== License
+
+This software is licensed under the terms of the MIT license. See {file:COPYING} for details.
