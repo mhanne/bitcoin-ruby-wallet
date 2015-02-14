@@ -36,7 +36,7 @@ module Bitcoin::Wallet
       host, port = "127.0.0.1", 9999
       @node = Network::CommandClient.connect(host, port, self, @storage) do
         on_connected { request :monitor, "block", "tx" }
-        on_block do |block, depth|
+        on_block do |block, height|
           EM.defer do
             block['tx'].each do |tx|
               relevant, tx = @args[0].check_tx(tx['hash'])
@@ -57,7 +57,7 @@ module Bitcoin::Wallet
     def check_tx tx_hash
       relevant = false
       addrs = addrs
-      tx = @storage.get_tx(tx_hash)
+      tx = @storage.tx(tx_hash)
       unless tx
         log.warn { "Received tx #{response['hash']} but not found in storage" }
         binding.pry
@@ -65,11 +65,11 @@ module Bitcoin::Wallet
       end
       addrs = @keystore.keys.map {|k| k[:addr] }
       tx.out.each do |txout|
-        return :incoming, tx  if (txout.get_addresses & addrs).any?
+        return :incoming, tx  if (txout.addresses & addrs).any?
       end
       tx.in.each do |txin|
-        next unless  prev_out = txin.get_prev_out
-        return :outgoing, tx  if (prev_out.get_addresses & addrs).any?
+        next unless  prev_out = txin.prev_out
+        return :outgoing, tx  if (prev_out.addresses & addrs).any?
       end
       return false
     end
@@ -102,13 +102,13 @@ module Bitcoin::Wallet
     # get all Storage::Models::TxOut concerning any address from this wallet
     def get_txouts(unconfirmed = false)
       txouts = @keystore.keys.map {|k|
-        @storage.get_txouts_for_address(k[:addr])}.flatten.uniq
-      (unconfirmed || @storage.class.name =~ /Utxo/) ? txouts : txouts.select {|o| !!o.get_tx.get_block}
+        @storage.txouts_for_address(k[:addr])}.flatten.uniq
+      (unconfirmed || @storage.class.name =~ /Utxo/) ? txouts : txouts.select {|o| !!o.tx.block}
     end
 
     # get total balance for all addresses in this wallet
     def get_balance(unconfirmed = false)
-      values = get_txouts(unconfirmed).select{|o| !o.get_next_in}.map(&:value)
+      values = get_txouts(unconfirmed).select{|o| !o.next_in}.map(&:value)
       ([0] + values).inject(:+)
     end
 
@@ -136,7 +136,7 @@ module Bitcoin::Wallet
     # list all keys along with their balances
     def list
       @keystore.keys.map do |key|
-        [key, @storage.get_balance(Bitcoin.hash160_from_address(key[:addr]))]
+        [key, @storage.balance(Bitcoin.hash160_from_address(key[:addr]))]
       end
     end
 
@@ -185,9 +185,9 @@ module Bitcoin::Wallet
           if out[0] == :name_firstupdate
             name_hash = Bitcoin.hash160(out[2] + out[1].hth)
             break  if prev_out = get_txouts.find {|o|
-              o.type == :name_new && o.script.get_namecoin_hash == name_hash }
+              o.type == :name_new && o.script.namecoin_hash == name_hash }
           elsif out[0] == :name_update
-            break  if prev_out = storage.name_show(out[1]).get_txout rescue nil
+            break  if prev_out = storage.name_show(out[1]).txout rescue nil
           end
         end
         if outputs.find{|o| [:name_firstupdate, :name_update].include?(o[0]) }
@@ -225,12 +225,12 @@ module Bitcoin::Wallet
 
         prev_outs.each_with_index do |prev_out, idx|
           t.input do |i|
-            prev_tx = prev_out.get_tx
+            prev_tx = prev_out.tx
             i.prev_out prev_tx
             i.prev_out_index prev_tx.out.index(prev_out)
             pk_script = Script.new(prev_out.pk_script)
             if pk_script.is_pubkey? || pk_script.is_hash160? || pk_script.is_namecoin?
-              i.signature_key @keystore.key(prev_out.get_address)[:key]
+              i.signature_key @keystore.key(prev_out.address)[:key]
             elsif pk_script.is_multisig?
               raise "multisig not implemented"
             end

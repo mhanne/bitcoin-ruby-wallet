@@ -7,6 +7,11 @@ begin
 rescue LoadError
 end
 
+RSpec.configure do |config|
+  config.fail_fast = true
+  config.expect_with(:rspec) {|c| c.syntax = [:should, :expect] }
+end
+
 require 'bundler'
 Bundler.setup
 require 'bitcoin'

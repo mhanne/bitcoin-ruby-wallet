@@ -15,10 +15,10 @@ module Bitcoin::Wallet
       txouts = []
       @txouts.each do |txout|
         begin
-          next  if txout.get_next_in
+          next  if txout.next_in
           next  if Bitcoin.namecoin? && txout.type.to_s =~ /^name_/
-          next  unless txout.get_address
-          next  unless txout.get_tx.get_block
+          next  unless txout.address
+          next  unless txout.tx.block
           txouts << txout
           return txouts  if txouts.map(&:value).inject(:+) >= value
         rescue

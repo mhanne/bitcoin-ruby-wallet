@@ -8,13 +8,13 @@ include Bitcoin::Wallet
 
 def txout_mock(value, next_in = true, in_block = true)
   tx, txout = Mock.new, Mock.new
-  tx.expect(:get_block, in_block)
+  tx.expect(:block, in_block)
   4.times { txout.expect(:value, value) }
-  2.times { txout.expect(:get_next_in, next_in) }
+  2.times { txout.expect(:next_in, next_in) }
   6.times { txout.expect(:hash, [value, next_in].hash) }
   txout.expect(:eql?, false, [1])
   txout.expect(:==, false, [1])
-  txout.expect(:get_tx, tx)
+  txout.expect(:tx, tx)
 end
 
 describe Bitcoin::Wallet::Wallet do
@@ -62,14 +62,14 @@ describe Bitcoin::Wallet::Wallet do
 
   it "should get total balance" do
     @storage.expect(:class, Bitcoin::Blockchain::Backends::Archive, [])
-    @storage.expect(:get_txouts_for_address, [], [@addr])
+    @storage.expect(:txouts_for_address, [], [@addr])
     2.times { @storage.expect(:class, Bitcoin::Blockchain::Backends::Archive, []) }
     @wallet.get_balance.should == 0
 
-    @storage.expect(:get_txouts_for_address, [txout_mock(5000, nil)], [@addr])
+    @storage.expect(:txouts_for_address, [txout_mock(5000, nil)], [@addr])
     @wallet.get_balance.should == 5000
 
-    @storage.expect(:get_txouts_for_address, [txout_mock(5000, true), txout_mock(1000, nil)],
+    @storage.expect(:txouts_for_address, [txout_mock(5000, true), txout_mock(1000, nil)],
       [@addr])
     @wallet.get_balance.should == 1000
   end
@@ -80,7 +80,7 @@ describe Bitcoin::Wallet::Wallet do
   end
 
   it "should list all addrs with balances" do
-    @storage.expect(:get_balance, 0, ['dcbc93494b38ae96b14b1cc080d2acb514b7e955'])
+    @storage.expect(:balance, 0, ['dcbc93494b38ae96b14b1cc080d2acb514b7e955'])
     list = @wallet.list
     list.size.should == 1
     list = list[0]
@@ -88,7 +88,7 @@ describe Bitcoin::Wallet::Wallet do
     list[0][:addr].should == "1M89ZeWtmZmATzE3b6PHTBi8c7tGsg5xpo"
     list[1].should == 0
 
-    @storage.expect(:get_balance, 5000, ['dcbc93494b38ae96b14b1cc080d2acb514b7e955'])
+    @storage.expect(:balance, 5000, ['dcbc93494b38ae96b14b1cc080d2acb514b7e955'])
     list = @wallet.list
     list.size.should == 1
     list = list[0]
@@ -113,11 +113,11 @@ describe Bitcoin::Wallet::Wallet do
   #     tx = Mock.new
   #     2.times { tx.expect(:binary_hash, "foo") }
   #     8.times { tx.expect(:out, [txout]) }
-  #     3.times { tx.expect(:get_block, true) }
-  #     5.times { txout.expect(:get_tx, tx) }
-  #     6.times { txout.expect(:get_address, @addr) }
+  #     3.times { tx.expect(:block, true) }
+  #     5.times { txout.expect(:tx, tx) }
+  #     6.times { txout.expect(:address, @addr) }
   #     8.times { txout.expect(:pk_script, Script.to_address_script(@addr)) }
-  #     2.times { @storage.expect(:get_txouts_for_address, [txout], [@addr]) }
+  #     2.times { @storage.expect(:txouts_for_address, [txout], [@addr]) }
   #     2.times { @storage.expect(:class, Bitcoin::Storage::Backends::SequelStore, []) }
   #     selector = Bitcoin::Wallet::SimpleCoinSelector.new([txout])
   #     2.times { @selector.expect(:new, selector, [[txout]]) }
@@ -209,13 +209,13 @@ describe Bitcoin::Wallet::Wallet do
   #     tx = Mock.new
   #     tx.expect(:binary_hash, "foo")
   #     4.times { tx.expect(:out, [txout]) }
-  #     tx.expect(:get_block, true)
-  #     txout.expect(:get_tx, tx)
-  #     2.times { txout.expect(:get_address, @addr) }
+  #     tx.expect(:block, true)
+  #     txout.expect(:tx, tx)
+  #     2.times { txout.expect(:address, @addr) }
   #     4.times { txout.expect(:pk_script, Script.to_address_script(@addr)) }
-  #     @storage.expect(:get_txouts_for_address, [txout], [@key.addr])
-  #     @storage.expect(:get_txouts_for_address, [txout], [@key2.addr])
-  #     @storage.expect(:get_txouts_for_address, [txout], [@key3.addr])
+  #     @storage.expect(:txouts_for_address, [txout], [@key.addr])
+  #     @storage.expect(:txouts_for_address, [txout], [@key2.addr])
+  #     @storage.expect(:txouts_for_address, [txout], [@key3.addr])
   #     @storage.expect(:class, Bitcoin::Storage::Backends::SequelStore, [])
   #     @keystore = DummyKeyStore.new([@key, @key2, @key3])
   #     selector = Mock.new
