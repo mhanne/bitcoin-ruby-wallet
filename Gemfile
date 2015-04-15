@@ -15,8 +15,10 @@ gem 'sqlite3'
 gem 'pg'
 # gem 'mysql'
 
+gem 'log4r'
+
 group :development do
   gem 'rake'
   gem 'rspec'
-  gem 'pry-byebug'
+  gem 'pry'
 end
