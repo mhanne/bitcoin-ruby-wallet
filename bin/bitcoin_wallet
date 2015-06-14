@@ -1,18 +1,23 @@
 #!/usr/bin/env ruby
-$:.unshift( File.expand_path("../lib", __FILE__) )
+$:.unshift( File.expand_path("../../lib", __FILE__) )
 
 require 'bundler'
 Bundler.setup
 require 'bitcoin'
+require 'bitcoin/namecoin'
+require 'bitcoin/blockchain'
+require 'bitcoin/node'
 require 'eventmachine'
 require 'optparse'
 require 'yaml'
 
+require 'bitcoin/wallet.rb'
+
 defaults = {
-  :network => "testnet",
-  :storage => nil,
-  :keystore => nil,
-  :command => "127.0.0.1:9999"
+  network: "testnet",
+  storage: nil,
+  keystore: nil,
+  command: ["127.0.0.1", 9999],
 }
 options = Bitcoin::Config.load(defaults, :wallet)
 
@@ -83,11 +88,10 @@ keystore = Bitcoin::Wallet.const_get("#{backend.capitalize}KeyStore").new(config
 if backend == "deterministic" && !config["nonce"]
   puts "nonce: #{keystore.generator.nonce}"
 end
-#puts *keystore.get_keys.map(&:addr)
 
 options[:storage] ||= "sequel::sqlite://~/.bitcoin-ruby/#{Bitcoin.network_name}/blocks.db"
 backend, config = options[:storage].split("::")
-storage = Bitcoin::Storage.send(backend, :db => config)
+storage = Bitcoin::Blockchain.create_store(backend, :db => config)
 
 wallet = Bitcoin::Wallet::Wallet.new(storage, keystore, Bitcoin::Wallet::SimpleCoinSelector)
 
@@ -145,9 +149,9 @@ def send_transaction(storage, options, tx, ask = true)
     end
   end
   EM.run do
-    Bitcoin::Network::CommandClient.connect(*options[:command]) do
+    Bitcoin::Node::CommandClient.connect(*options[:command]) do
       on_connected do
-        request(:relay_tx, tx.to_payload.hth)
+        request(:relay_tx, hex: tx.to_payload.hth)
       end
       on_relay_tx do |res|
         if res["success"]
@@ -251,7 +255,7 @@ when "list"
           "#{str_val total} | #{blocks}"
         txin.get_tx.out.each do |out|
           if Bitcoin.namecoin? && out.type.to_s =~ /^name_/
-            script = out.script
+            script = out.parsed_script
             puts "  -> #{script.get_namecoin_name || script.get_namecoin_hash} (#{out.type})"
           else
             puts "  -> #{out.get_addresses.join(', ') rescue 'unknown'}"
@@ -293,7 +297,7 @@ when "name_new"
   def self.set_rand rand
     @rand = rand
   end
-  tx = wallet.new_tx([[:name_new, self, name, address, 1000000]])
+  tx = wallet.new_tx([[:name_new, self, name, address, 1000000]], 100000, :back)
   (puts "Error creating tx."; exit)  unless tx
   send_transaction(storage, options, tx, true)
   puts JSON.pretty_generate([tx.hash, @rand])
@@ -301,7 +305,7 @@ when "name_new"
 when "name_firstupdate"
   name, rand, value = *cmdopts
   address = wallet.keystore.keys.sample[:key].addr
-  tx = wallet.new_tx([[:name_firstupdate, name, rand, value, address, 1000000]])
+  tx = wallet.new_tx([[:name_firstupdate, name, rand, value, address, 1000000]], 100000, :back)
   (puts "Error creating tx."; exit)  unless tx
   send_transaction(storage, options, tx, true)
   puts tx.hash
@@ -309,7 +313,7 @@ when "name_firstupdate"
 when "name_update"
   name, value, address = *cmdopts
   address ||= wallet.keystore.keys.sample[:key].addr
-  tx = wallet.new_tx([[:name_update, name, value, address, 1000000]])
+  tx = wallet.new_tx([[:name_update, name, value, address, 1000000]], 100000, :back)
   (puts "Error creating tx."; exit)  unless tx
   send_transaction(storage, options, tx, true)
   puts tx.hash
@@ -329,20 +333,9 @@ when "send"
   end
 
   tx = wallet.new_tx(to, fee)
-
-  if tx.is_a?(Bitcoin::Wallet::TxDP)
-    puts "Transaction needs to be signed by additional keys."
-    print "Filename to save TxDP: [./#{tx.id}.txdp] "
-    $stdout.flush
-    filename = $stdin.gets.strip
-    filename = "./#{tx.id}.txdp"  if filename == ""
-    File.open(filename, "w") {|f| f.write(tx.serialize) }
-    exit
-  end
-
   (puts "Error creating tx."; exit)  unless tx
 
-  send_transaction(storage, options, tx)
+  send_transaction(storage, options, tx, true)
 
 when "sign"
   txt = File.read(ARGV[0])

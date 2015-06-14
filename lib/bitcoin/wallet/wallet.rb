@@ -177,15 +177,14 @@ module Bitcoin::Wallet
     def new_tx outputs, fee = 0, change_policy = :back
       output_value = outputs.map{|o| o[-1] }.inject(:+)
 
-      prev_outs = get_selector.select(output_value)
-      raise "Insufficient funds."  if !prev_outs
+      prev_outs = get_selector.select(output_value) || []
       if Bitcoin.namecoin?
         prev_out = nil
         outputs.each do |out|
           if out[0] == :name_firstupdate
             name_hash = Bitcoin.hash160(out[2] + out[1].hth)
             break  if prev_out = get_txouts.find {|o|
-              o.type == :name_new && o.script.namecoin_hash == name_hash }
+              o.type == :name_new && o.parsed_script.get_namecoin_hash == name_hash }
           elsif out[0] == :name_update
             break  if prev_out = storage.name_show(out[1]).txout rescue nil
           end
@@ -196,7 +195,7 @@ module Bitcoin::Wallet
         end
       end
 
-      input_value = prev_outs.map(&:value).inject(:+)
+      input_value = prev_outs.map(&:value).inject(:+) || 0
       raise "Insufficient funds."  unless input_value >= (output_value + fee)
 
       tx = build_tx do |t|

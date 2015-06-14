@@ -16,7 +16,7 @@ module Bitcoin::Wallet
       @txouts.each do |txout|
         begin
           next  if txout.next_in
-          next  if Bitcoin.namecoin? && txout.type.to_s =~ /^name_/
+          next  if Bitcoin.namecoin? && txout.parsed_script.is_namecoin?
           next  unless txout.address
           next  unless txout.tx.block
           txouts << txout
@@ -25,7 +25,7 @@ module Bitcoin::Wallet
           p $!
         end
       end
-      nil
+      txouts
     end
 
   end
