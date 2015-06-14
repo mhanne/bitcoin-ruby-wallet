@@ -4,6 +4,13 @@ This is a simple wallet based on bitcoin-ruby[http://github.com/lian/bitcoin-rub
 
 It is in very early development and serves mostly as a proof-of-concept prototype.
 
+Features include
+
+* support for multiple addresses (no BIP32 yet)
+* import/export keys from/to base58 format
+* display balance and transaction history
+* create transactions with multiple outputs of all bitcoin script types
+* register and manage namecoin name records
 
 == Installation
 
@@ -25,6 +32,244 @@ the keystore to use, and how to connect to the node and its database.
 See +--help+ for details.
 
 TODO: explain keystores
+
+== CLI
+
+=== balance
+
+Display balance for given addr or whole wallet
+
+ balance [<addr>]
+
+Example (balance for whole wallet)
+
+ > balance
+ Total balance:      1.00000000
+
+Example (balance for given address)
+
+ > balance mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER
+ mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER balance:      1.00000000
+
+=== list
+
+List addresses or transaction history for given address
+
+ list [<addr>]
+
+Example (listing all addresses)
+
+ > list
+ Wallet addresses:
+   P            (mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER) -      0.48700000
+   P            (mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa) -      0.50000000
+ Total balance:      0.98700000
+
+Example (listing transactions for given address)
+
+ > list mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa
+  INFO storage: opened archive store postgres:/namecoin_regtest
+ 84b4be9b28140658e7a767046572047b08469bf0cc9f13ab889273fbe9680ad9 |    + 0.50000000 |      0.50000000 | 56
+   <- mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER
+ 
+ Total balance:      0.50000000
+
+=== send
+
+Create a transaction and send it to the bitcoin network
+
+ send [<type>:]<addr>:<amount>[,[<type>:]<addr>:<amount>...] [<fee>]
+
+Example sending 0.5 coins to an address with 0.01 fee
+
+ > send mg4z8NFcDHdSzWhuJReH64SyQC:0.5 0.01
+ Hash: 84b4be9b28140658e7a767046572047b08469bf0cc9f13ab889273fbe9680ad9
+ inputs:
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      1.00000000
+ outputs:
+      0.50000000 mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa (address)
+      0.49000000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (address)
+ Fee:      0.01000000
+ Really send transaction? (y/N) y
+ Transaction 84b4be9b28140658e7a767046572047b08469bf0cc9f13ab889273fbe9680ad9 relayed to approx. 100.00% of the network.
+
+Example creating an OP_RETURN output
+
+ > send op_return:deadbeef:0
+ inputs:
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      1.00000000
+ outputs:
+      0.00000000 deadbeef (op_return)
+      1.00000000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (address)
+ Fee:      0.00000000
+
+=== new
+
+Generate a new key and add it to the keystore
+
+ new
+
+Example
+
+ > new
+ Generated new key with address: mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa
+
+=== import
+
+Import a private key in base58 (WIF) format
+
+ import <base58>
+
+Example
+
+ > import cPWtu2h81G4ai635woPWghhr619EQVpgKimELRstdbzpJ31Y8NXW
+ Key for mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa imported.
+
+=== export
+
+Export private key for given <addr> to base58 (WIF) format
+
+ export <addr>
+
+Example
+
+ > export mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa
+ Base58 encoded private key for mg4z8NFcDHdSzWhuJReH64SyQCNPhwswQa:
+ cPWtu2h81G4ai635woPWghhr619EQVpgKimELRstdbzpJ31Y8NXW
+
+=== name_list
+
+List names in the wallet
+
+ name_list
+
+Example
+
+ > name_list
+ [
+   {
+     "name": "d/foo",
+     "value": "{\"foo\":\"baz\"}",
+     "address": "mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER",
+     "expires_in": 35985
+   }
+ ]
+
+=== name_show
+
+Display current state of given <name>
+
+ name_show <name>
+
+Example
+
+ > name_show d/foo
+ {
+   "name": "d/foo",
+   "value": "{\"foo\":\"baz\"}",
+   "txid": "66c3d247489a7d926e77f04a2cf469988e1f991ff463b2895c85544ad87d42bc",
+   "address": "mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER",
+   "expires_in": 35985
+ }
+
+=== name_history
+
+Display history for given <name>
+
+ name_history <name> - display name history
+
+Example
+
+ > name_history d/foo
+ [
+   {
+     "name": "d/foo",
+     "value": "{\"foo\":\"bar\"}",
+     "txid": "a5718f2f075bc040fbb30a4d0145d8ada15286a6c72866d4619b7402faf61a39",
+     "address": "mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER",
+     "expires_in": 35981
+   },
+   {
+     "name": "d/foo",
+     "value": "{\"foo\":\"baz\"}",
+     "txid": "66c3d247489a7d926e77f04a2cf469988e1f991ff463b2895c85544ad87d42bc",
+     "address": "mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER",
+     "expires_in": 35985
+   }
+ ]
+
+=== name_new
+
+Reserve the given <name>. This will output a secret random value used to "lock" the name.
+You MUST remember this value, since you need it for the name_firstupdate.
+
+ name_new <name>
+
+Example
+
+ > name_new d/foo
+
+ Hash: 9b01846b55e06af65d5b66b09999b08199bd4467262242f1c7dd7905f4f3a42b
+ inputs:
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      0.49000000
+ outputs:
+      0.01000000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (name_new)
+                 Name Hash: d1c8352c69755680571d3c921944c1ee0a7d37fe
+      0.47900000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (address)
+ Fee:      0.00100000
+ Really send transaction? (y/N) y
+ Transaction 9b01846b55e06af65d5b66b09999b08199bd4467262242f1c7dd7905f4f3a42b relayed to approx. 100.00% of the network.
+ [
+   "9b01846b55e06af65d5b66b09999b08199bd4467262242f1c7dd7905f4f3a42b",
+   "2c40c546f77e9ef6"
+ ]
+
+The very last number is our secret random value.
+Write it down and remember it until your +name_firstupdate+ succeeds.
+
+=== name_firstupdate
+
+Register the given <name> with secret <rand> and set it to <value>.
+
+ name_firstupdate <name> <rand> <value>
+
+Example (Note that we are now passing in the random value from +name_new+)
+
+ > name_firstupdate d/foo 2c40c546f77e9ef6 '{"foo":"bar"}'
+ Hash: a5718f2f075bc040fbb30a4d0145d8ada15286a6c72866d4619b7402faf61a39
+ inputs:
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      0.47900000
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      0.01000000
+ outputs:
+      0.01000000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (name_firstupdate)
+                 d/foo: {"foo":"bar"}
+      0.47800000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (address)
+ Fee:      0.00100000
+ Really send transaction? (y/N) y
+ Transaction a5718f2f075bc040fbb30a4d0145d8ada15286a6c72866d4619b7402faf61a39 relayed to approx. 100.00% of the network.
+ a5718f2f075bc040fbb30a4d0145d8ada15286a6c72866d4619b7402faf61a39
+
+=== name_update
+
+Update the given <name> with given <value>. Transfer ownership to <toaddress> if specified.
+
+ name_update <name> <value> [<toaddress>]
+
+Example
+
+ > name_update d/foo '{"foo":"baz"}'
+ Hash: 66c3d247489a7d926e77f04a2cf469988e1f991ff463b2895c85544ad87d42bc
+ inputs:
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      0.47800000
+  mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER -      0.01000000
+ outputs:
+      0.01000000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (name_update)
+                 d/foo: {"foo":"baz"}
+      0.47700000 mvUrN88gJKNWH4Qbetozu17by8oSEvC9ER (address)
+ Fee:      0.00100000
+ Really send transaction? (y/N) y
+ Transaction 66c3d247489a7d926e77f04a2cf469988e1f991ff463b2895c85544ad87d42bc relayed to approx. 100.00% of the network.
+ 66c3d247489a7d926e77f04a2cf469988e1f991ff463b2895c85544ad87d42bc
 
 == Documentation
 
